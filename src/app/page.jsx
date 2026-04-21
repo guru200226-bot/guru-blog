@@ -1,30 +1,32 @@
 import Link from 'next/link';
 import CallToAction from './components/CallToAction';
 import RecentPosts from './components/RecentPosts';
+import Post from '@/lib/models/post.model.js';
+import { connect } from '@/lib/mongodb/mongoose.js';
 
 export default async function Home() {
-  let posts = null;
+  let posts = [];
+
   try {
-    const result = await fetch(process.env.URL + '/api/post/get', {
-      method: 'POST',
-      body: JSON.stringify({ limit: 9, order: 'desc' }),
-      cache: 'no-store',
-    });
-    const data = await result.json();
-    posts = data.posts;
+    await connect();
+    posts = await Post.find()
+      .sort({ updatedAt: -1 })
+      .limit(9)
+      .lean();
   } catch (error) {
-    console.log('Error getting post:', error);
+    console.log('Error getting posts:', error);
   }
+
   return (
     <div className='flex flex-col justify-center items-center'>
-      <div className='flex flex-col gap-6 p-28 px-3 max-w-6xl mx-auto '>
+      <div className='flex flex-col gap-6 p-28 px-3 max-w-6xl mx-auto'>
         <h1 className='text-3xl font-bold lg:text-6xl'>Welcome to my Blog</h1>
         <p className='text-gray-500 text-sm sm:text-base'>
           Discover a variety of articles and tutorials on topics such as web
           development, software engineering, and programming languages, all
           brought to you through a blog built with Next.js and{' '}
-          <a
-            href='https://go.clerk.com/fgJHKlt'
+          
+           <a href='https://go.clerk.com/fgJHKlt'
             className='text-teal-500 hover:underline'
             target='_blank'
           >
