@@ -1,17 +1,20 @@
 import PostCard from './PostCard';
-export default async function RecentPosts({limit}) {
-  let posts = null;
+import Post from '@/lib/models/post.model.js';
+import { connect } from '@/lib/mongodb/mongoose.js';
+
+export default async function RecentPosts({ limit }) {
+  let posts = [];
+
   try {
-    const result = await fetch(process.env.URL + '/api/post/get', {
-      method: 'POST',
-      body: JSON.stringify({ limit: limit, order: 'desc' }),
-      cache: 'no-store',
-    });
-    const data = await result.json();
-    posts = data.posts;
+    await connect();
+    posts = await Post.find()
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean();
   } catch (error) {
-    console.log('Error getting post:', error);
+    console.log('Error getting posts:', error);
   }
+
   return (
     <div className='flex flex-col justify-center items-center mb-5'>
       <h1 className='text-xl mt-5'>Recent articles</h1>

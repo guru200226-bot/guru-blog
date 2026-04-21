@@ -2,24 +2,15 @@ import CallToAction from '@/app/components/CallToAction';
 import RecentPosts from '@/app/components/RecentPosts';
 import { Button } from 'flowbite-react';
 import Link from 'next/link';
-
-export const dynamic = 'force-dynamic'; // 👈 Add this
+import Post from '@/lib/models/post.model.js';
+import { connect } from '@/lib/mongodb/mongoose.js';
 
 export default async function PostPage({ params }) {
   let post = null;
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-    const result = await fetch(`${baseUrl}/api/post/get`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: params.slug }),
-    });
-
-    const data = await result.json();
-    post = data.posts[0];
+    await connect();
+    post = await Post.findOne({ slug: params.slug }).lean();
   } catch (error) {
     console.error('Error getting post:', error);
     post = null;
