@@ -1,49 +1,60 @@
-import Post from '../../../../lib/models/post.model.js';
-import { connect } from '../../../../lib/mongodb/mongoose.js';
+import CallToAction from '@/app/components/CallToAction';
+import RecentPosts from '@/app/components/RecentPosts';
+import { Button } from 'flowbite-react';
+import Link from 'next/link';
+import Post from '@/lib/models/post.model.js';
+import { connect } from '@/lib/mongodb/mongoose.js';
 
-export const POST = async (req) => {
-  await connect();
-  const data = await req.json();
+export default async function PostPage({ params }) {
+  let post = null;
+
   try {
-    const startIndex = parseInt(data.startIndex) || 0;
-    const limit = parseInt(data.limit) || 9;
-    const sortDirection = data.order === 'asc' ? 1 : -1;
-    const posts = await Post.find({
-      ...(data.userId && { userId: data.userId }),
-      ...(data.category &&
-        data.category !== 'null' &&
-        data.category !== 'undefined' && { category: data.category }),
-      ...(data.slug && { slug: data.slug }),
-      ...(data.postId && { _id: data.postId }),
-      ...(data.searchTerm && {
-        $or: [
-          { title: { $regex: data.searchTerm, $options: 'i' } },
-          { content: { $regex: data.searchTerm, $options: 'i' } },
-        ],
-      }),
-    })
-      .sort({ updatedAt: sortDirection })
-      .skip(startIndex)
-      .limit(limit);
-
-    const totalPosts = await Post.countDocuments();
-
-    const now = new Date();
-
-    const oneMonthAgo = new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      now.getDate()
-    );
-
-    const lastMonthPosts = await Post.countDocuments({
-      createdAt: { $gte: oneMonthAgo },
-    });
-
-    return new Response(JSON.stringify({ posts, totalPosts, lastMonthPosts }), {
-      status: 200,
-    });
+    await connect();
+    post = await Post.findOne({ slug: params.slug }).lean();
   } catch (error) {
-    console.log('Error getting posts:', error);
+    console.error('Error getting post:', error);
+    post = null;
   }
-};
+
+  if (!post) {
+    return (
+      <main className='p-3 flex flex-col max-w-6xl mx-auto min-h-screen'>
+        <h2 className='text-3xl mt-10 p-3 text-center font-serif max-w-2xl mx-auto lg:text-4xl'>
+          Post not found
+        </h2>
+      </main>
+    );
+  }
+
+  return (
+    <main className='p-3 flex flex-col max-w-6xl mx-auto min-h-screen'>
+      <h1 className='text-3xl mt-10 p-3 text-center font-serif max-w-2xl mx-auto lg:text-4xl'>
+        {post.title}
+      </h1>
+      <Link href={`/search?category=${post.category}`} className='self-center mt-5'>
+        <Button color='gray' pill size='xs'>
+          {post.category}
+        </Button>
+      </Link>
+      <img
+        src={post.image}
+        alt={post.title}
+        className='mt-10 p-3 max-h-[600px] w-full object-cover'
+      />
+      <div className='flex justify-between p-3 border-b border-slate-500 mx-auto w-full max-w-2xl text-xs'>
+        <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+        <span className='italic'>
+          {(post?.content?.length / 1000).toFixed(0)} mins read
+        </span>
+      </div>
+      <div
+        className='p-3 max-w-2xl mx-auto w-full post-content'
+        dangerouslySetInnerHTML={{ __html: post?.content }}
+      />
+      <div className='max-w-4xl mx-auto w-full'>
+        <CallToAction />
+      </div>
+      <RecentPosts limit={3} />
+    </main>
+  );
+}

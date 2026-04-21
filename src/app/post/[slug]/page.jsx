@@ -3,6 +3,8 @@ import RecentPosts from '@/app/components/RecentPosts';
 import { Button } from 'flowbite-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic'; // 👈 Add this
+
 export default async function PostPage({ params }) {
   let post = null;
 
