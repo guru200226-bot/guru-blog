@@ -5,11 +5,10 @@ import Link from 'next/link';
 export default async function PostPage({ params }) {
   let post = null;
   try {
-    const result = await fetch(process.env.URL + '/api/post/get', {
-      method: 'POST',
-      body: JSON.stringify({ slug: params.slug }),
-      cache: 'no-store',
-    });
+    const result = await fetch('/api/post/get', {
+  method: 'POST',
+  body: JSON.stringify({ slug: params.slug }),
+});
     const data = await result.json();
     post = data.posts[0];
   } catch (error) {
