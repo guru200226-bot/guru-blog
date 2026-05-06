@@ -1,6 +1,7 @@
 import Post from '../../../../lib/models/post.model.js';
 import { connect } from '../../../../lib/mongodb/mongoose.js';
 import { currentUser } from '@clerk/nextjs/server';
+
 export const POST = async (req) => {
   const user = await currentUser();
   try {
@@ -12,15 +13,18 @@ export const POST = async (req) => {
       user.publicMetadata.userMongoId !== data.userMongoId ||
       user.publicMetadata.isAdmin !== true
     ) {
-      return new Response('Unauthorized', {
+      return new Response(JSON.stringify({ message: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' },
       });
     }
+
     const slug = data.title
       .split(' ')
       .join('-')
       .toLowerCase()
       .replace(/[^a-zA-Z0-9-]/g, '');
+
     const newPost = await Post.create({
       userId: user.publicMetadata.userMongoId,
       content: data.content,
@@ -29,14 +33,16 @@ export const POST = async (req) => {
       category: data.category,
       slug,
     });
-    await newPost.save();
+
     return new Response(JSON.stringify(newPost), {
       status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.log('Error creating post:', error);
-    return new Response('Error creating post', {
+    return new Response(JSON.stringify({ message: 'Error creating post' }), {
       status: 500,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 };
