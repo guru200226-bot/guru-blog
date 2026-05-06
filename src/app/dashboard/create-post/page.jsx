@@ -2,14 +2,11 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Alert, Button, FileInput, Select, TextInput } from 'flowbite-react';
-
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
-// https://dev.to/a7u/reactquill-with-nextjs-478b
 import 'react-quill-new/dist/quill.snow.css';
-
 import {
   getDownloadURL,
   getStorage,
@@ -17,20 +14,17 @@ import {
   uploadBytesResumable,
 } from 'firebase/storage';
 import { app } from '@/firebase';
-
 import { CircularProgressbar } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 
 export default function CreatePostPage() {
   const { isSignedIn, user, isLoaded } = useUser();
-
   const [file, setFile] = useState(null);
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
   const [formData, setFormData] = useState({});
   const [publishError, setPublishError] = useState(null);
   const router = useRouter();
-  console.log(formData);
 
   const handleUpdloadImage = async () => {
     try {
@@ -51,14 +45,15 @@ export default function CreatePostPage() {
           setImageUploadProgress(progress.toFixed(0));
         },
         (error) => {
-          setImageUploadError('Image upload failed');
+          setImageUploadError('Image upload failed. Check Firebase Storage rules.');
           setImageUploadProgress(null);
+          console.log('Upload error:', error);
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
             setImageUploadProgress(null);
             setImageUploadError(null);
-            setFormData({ ...formData, image: downloadURL });
+            setFormData((prev) => ({ ...prev, image: downloadURL }));
           });
         }
       );
@@ -71,6 +66,10 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (imageUploadProgress) {
+      setPublishError('Please wait for the image to finish uploading');
+      return;
+    }
     try {
       const res = await fetch('/api/post/create', {
         method: 'POST',
@@ -84,21 +83,17 @@ export default function CreatePostPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setPublishError(data.message);
+        setPublishError(data.message || 'Something went wrong');
         return;
       }
-      if (res.ok) {
-        setPublishError(null);
-        router.push(`/post/${data.slug}`);
-      }
+      setPublishError(null);
+      router.push(`/post/${data.slug}`);
     } catch (error) {
       setPublishError('Something went wrong');
     }
   };
 
-  if (!isLoaded) {
-    return null;
-  }
+  if (!isLoaded) return null;
 
   if (isSignedIn && user.publicMetadata.isAdmin) {
     return (
@@ -115,12 +110,12 @@ export default function CreatePostPage() {
               id='title'
               className='flex-1'
               onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
+                setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
             />
             <Select
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData((prev) => ({ ...prev, category: e.target.value }))
               }
             >
               <option value='uncategorized'>Select a category</option>
@@ -141,7 +136,7 @@ export default function CreatePostPage() {
               size='sm'
               outline
               onClick={handleUpdloadImage}
-              disabled={imageUploadProgress}
+              disabled={!!imageUploadProgress}
             >
               {imageUploadProgress ? (
                 <div className='w-16 h-16'>
@@ -172,10 +167,13 @@ export default function CreatePostPage() {
             placeholder='Write something...'
             className='h-72 mb-12'
             required
-            onChange={(value) => {
-              setFormData({ ...formData, content: value });
-            }}
+            onChange={(value) =>
+              setFormData((prev) => ({ ...prev, content: value }))
+            }
           />
+          {publishError && (
+            <Alert color='failure'>{publishError}</Alert>
+          )}
           <Button type='submit' gradientDuoTone='purpleToPink'>
             Publish
           </Button>
