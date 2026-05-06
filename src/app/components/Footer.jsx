@@ -55,7 +55,7 @@ export default function FooterCom() {
                 >
                   Github
                 </Footer.Link>
-                <Footer.Link href='#'>Discord</Footer.Link>
+                <Footer.Link href='https://discord.com/channels/@me'>Discord</Footer.Link>
               </Footer.LinkGroup>
             </div>
             <div>
