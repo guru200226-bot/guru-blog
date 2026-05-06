@@ -7,13 +7,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 import 'react-quill-new/dist/quill.snow.css';
-import {
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytesResumable,
-} from 'firebase/storage';
-import { app } from '@/firebase';
 import { CircularProgressbar } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 
@@ -27,36 +20,32 @@ export default function CreatePostPage() {
   const router = useRouter();
 
   const handleUpdloadImage = async () => {
+    if (!file) {
+      setImageUploadError('Please select an image');
+      return;
+    }
+    setImageUploadError(null);
+    setImageUploadProgress(50); // show progress while uploading
+
+    const formDataObj = new FormData();
+    formDataObj.append('file', file);
+    formDataObj.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+
     try {
-      if (!file) {
-        setImageUploadError('Please select an image');
-        return;
-      }
-      setImageUploadError(null);
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + '-' + file.name;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setImageUploadProgress(progress.toFixed(0));
-        },
-        (error) => {
-          setImageUploadError('Image upload failed. Check Firebase Storage rules.');
-          setImageUploadProgress(null);
-          console.log('Upload error:', error);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setImageUploadProgress(null);
-            setImageUploadError(null);
-            setFormData((prev) => ({ ...prev, image: downloadURL }));
-          });
-        }
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formDataObj }
       );
+      const data = await res.json();
+      if (data.secure_url) {
+        setImageUploadProgress(100);
+        setTimeout(() => setImageUploadProgress(null), 1000);
+        setFormData((prev) => ({ ...prev, image: data.secure_url }));
+        setImageUploadError(null);
+      } else {
+        setImageUploadError('Image upload failed');
+        setImageUploadProgress(null);
+      }
     } catch (error) {
       setImageUploadError('Image upload failed');
       setImageUploadProgress(null);
